@@ -22,6 +22,7 @@ export default function QRModal({ data, onClose }) {
           <h3>Siddaganga Hospital</h3>
           <p><b>Medicine QR Label</b></p>
           <img src="${src}">
+          <p><b>Order:</b> #${data.req_id}</p>
           <p><b>Patient:</b> ${data.patient_id}</p>
           <p><b>Ward:</b> ${data.ward}</p>
           <p><b>Medicines:</b></p>
@@ -62,6 +63,9 @@ export default function QRModal({ data, onClose }) {
           <p className="mt-3 text-sm font-semibold text-teal-deep">Ready for robot delivery</p>
 
           <div className="mt-3 space-y-1 rounded-xl bg-mist p-3 text-left text-sm">
+            <div>
+              <b>Order:</b> #{data.req_id}
+            </div>
             <div>
               <b>Patient:</b> {data.patient_id}
             </div>

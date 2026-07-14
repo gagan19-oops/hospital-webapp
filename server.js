@@ -246,6 +246,19 @@ app.post(
 );
 
 app.post(
+  "/api/pharmacy/send-to-robot",
+  requireRole("pharmacy"),
+  asyncRoute(async (req, res) => {
+    const { req_id } = req.body;
+    await pool.query(
+      "UPDATE requests SET delivery_status='Requested' WHERE id=? AND qr_status='Generated'",
+      [req_id]
+    );
+    res.json({ ok: true });
+  })
+);
+
+app.post(
   "/api/pharmacy/generate-qr",
   requireRole("pharmacy"),
   asyncRoute(async (req, res) => {
@@ -265,7 +278,7 @@ app.post(
     const [patient_id, ward] = headerRows[0];
 
     const itemLines = items.map((it) => `- ${it[0]}: ${it[2]} ${it[1]}`).join("\n");
-    const qrText = `\nPatient: ${patient_id}\nWard: ${ward}\nMedicines:\n${itemLines}\n`;
+   const qrText = `Request ID: ${req_id}\nPatient: ${patient_id}\nWard: ${ward}\nMedicines:\n${itemLines}\n`;
 
     const qrDataUrl = await QRCode.toDataURL(qrText, { type: "image/png" });
     const qrData = qrDataUrl.replace(/^data:image\/png;base64,/, "");
@@ -277,6 +290,7 @@ app.post(
 
     res.json({
       qr_data: qrData,
+      req_id,
       patient_id,
       ward,
       items: items.map((it) => ({ name: it[0], unit: it[1], quantity: it[2] })),
@@ -357,15 +371,7 @@ app.delete(
 );
 
 // ================= ROBOT =================
-app.get("/api/robot", (req, res) => {
-  res.json({
-    data: [
-      ["R101", "P20006", "ICU", "Cardiac Medicine", "Delivering", "https://www.youtube.com/..."],
-      ["R102", "P20007", "Ward-2", "Paracetamol", "Delivered", "https://www.youtube.com/..."],
-    ],
-    role: req.session.role || null,
-  });
-});
+
 
 // ================= PATIENT PORTAL =================
 app.post(
@@ -704,6 +710,85 @@ if (fs.existsSync(clientDist)) {
       );
   });
 }
+
+// ================= ROBOT =================
+function requireRobotKey(req, res, next) {
+  const key = req.header("X-Robot-Key");
+  if (!key || key !== process.env.ROBOT_API_KEY) {
+    return res.status(401).json({ error: "Invalid robot key" });
+  }
+  next();
+}
+
+const ROBOT_STATUSES = ["Picked Up", "In Transit", "Obstacle Detected", "Delivered", "Failed"];
+
+app.get(
+  "/api/robot/next-job",
+  requireRobotKey,
+  asyncRoute(async (req, res) => {
+    const [rows] = await pool.query(
+      "SELECT id, ward, patient_id FROM requests WHERE delivery_status='Requested' ORDER BY id ASC LIMIT 1"
+    );
+    if (rows.length === 0) {
+      return res.json({ job: null });
+    }
+    const [id, ward, patient_id] = rows[0];
+    await pool.query("UPDATE requests SET delivery_status='Assigned' WHERE id=?", [id]);
+    res.json({ job: { req_id: id, ward, patient_id, expected_id: id } });
+  })
+);
+
+app.post(
+  "/api/robot/status",
+  requireRobotKey,
+  asyncRoute(async (req, res) => {
+    const { req_id, status } = req.body;
+    if (!ROBOT_STATUSES.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+    const now = formatNow();
+    await pool.query("UPDATE requests SET delivery_status=?, delivery_time=? WHERE id=?", [
+      status,
+      now,
+      req_id,
+    ]);
+    res.json({ ok: true });
+  })
+);
+
+app.get(
+  "/api/deliveries/status",
+  asyncRoute(async (req, res) => {
+    if (req.session.role) {
+      const [rows] = await pool.query(
+        `SELECT id, patient_id, ward, delivery_status, delivery_time FROM requests
+         WHERE delivery_status IS NOT NULL AND delivery_status NOT IN ('Pending')
+         ORDER BY id DESC LIMIT 20`
+      );
+      return res.json({
+        deliveries: rows.map((r) => ({
+          req_id: r[0],
+          patient_id: r[1],
+          ward: r[2],
+          status: r[3],
+          updated: r[4],
+        })),
+      });
+    }
+    if (req.session.patient_id) {
+      const [rows] = await pool.query(
+        `SELECT id, ward, delivery_status, delivery_time FROM requests
+         WHERE patient_id=? AND delivery_status IS NOT NULL AND delivery_status NOT IN ('Pending')
+         ORDER BY id DESC LIMIT 5`,
+        [req.session.patient_id]
+      );
+      return res.json({
+        deliveries: rows.map((r) => ({ req_id: r[0], ward: r[1], status: r[2], updated: r[3] })),
+      });
+    }
+    res.status(401).json({ error: "Not logged in" });
+  })
+);
 
 // ================= ERROR HANDLER =================
 app.use((err, req, res, next) => {

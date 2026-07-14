@@ -36,7 +36,20 @@ const BADGE_STYLES = {
   paid: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
   unpaid: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
   neutral: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+  active: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+  warning: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
+  danger: "bg-red-50 text-red-700 ring-1 ring-red-200",
 };
+
+// Shared everywhere a delivery_status gets shown, so every dashboard colors
+// the same status the same way instead of everything just being amber/teal.
+export function deliveryTone(status) {
+  if (status === "Delivered") return "delivered";
+  if (status === "Obstacle Detected") return "warning";
+  if (status === "Failed") return "danger";
+  if (status === "Picked Up" || status === "In Transit") return "active";
+  return "pending"; // Pending, Requested, Assigned
+}
 
 export function Badge({ tone = "neutral", children }) {
   return (

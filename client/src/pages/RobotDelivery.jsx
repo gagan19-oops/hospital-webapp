@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { Card, Badge } from "../components/ui";
+import { Card, Badge, deliveryTone } from "../components/ui";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -11,14 +11,19 @@ export default function RobotDelivery() {
   const [loading, setLoading] = useState(true);
   const { session } = useAuth();
 
-  useEffect(() => {
-    api.get("/api/robot").then((res) => {
-      setRows(res.data);
-      setLoading(false);
-    });
+  const load = useCallback(async () => {
+    const res = await api.get("/api/deliveries/status");
+    setRows(res.deliveries);
+    setLoading(false);
   }, []);
 
-  const backTo = session.role ? `/${session.role}` : "/";
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 5000); // live refresh every 5s
+    return () => clearInterval(interval);
+  }, [load]);
+
+  const backTo = session.role ? `/${session.role}` : session.patient_id ? "/patient/dashboard" : "/";
 
   return (
     <div className="min-h-screen bg-paper">
@@ -40,34 +45,37 @@ export default function RobotDelivery() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink/10 text-xs font-semibold uppercase tracking-wide text-slate">
-                  <th className="py-2 pr-4">Robot ID</th>
+                  <th className="py-2 pr-4">Order</th>
                   <th className="py-2 pr-4">Patient</th>
                   <th className="py-2 pr-4">Ward</th>
-                  <th className="py-2 pr-4">Medicine</th>
                   <th className="py-2 pr-4">Status</th>
-                  <th className="py-2">Live Video</th>
+                  <th className="py-2">Updated</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate">
+                    <td colSpan={5} className="py-6 text-center text-slate">
                       Loading…
                     </td>
                   </tr>
                 )}
-                {rows.map((r, i) => (
-                  <tr key={i} className="border-b border-ink/5">
-                    <td className="py-3 pr-4 font-data">{r[0]}</td>
-                    <td className="py-3 pr-4 font-data">{r[1]}</td>
-                    <td className="py-3 pr-4">{r[2]}</td>
-                    <td className="py-3 pr-4">{r[3]}</td>
+                {!loading && rows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate">
+                      No deliveries in progress right now.
+                    </td>
+                  </tr>
+                )}
+                {rows.map((r) => (
+                  <tr key={r.req_id} className="border-b border-ink/5">
+                    <td className="py-3 pr-4 font-data">#{r.req_id}</td>
+                    <td className="py-3 pr-4 font-data">{r.patient_id}</td>
+                    <td className="py-3 pr-4">{r.ward}</td>
                     <td className="py-3 pr-4">
-                      <Badge tone={r[4] === "Delivering" ? "pending" : "delivered"}>{r[4]}</Badge>
+                      <Badge tone={deliveryTone(r.status)}>{r.status}</Badge>
                     </td>
-                    <td className="py-3">
-                      <iframe title={`robot-feed-${i}`} width="200" height="120" src={r[5]} className="rounded-lg" />
-                    </td>
+                    <td className="py-3 font-data text-xs text-slate">{r.updated || "—"}</td>
                   </tr>
                 ))}
               </tbody>

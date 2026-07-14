@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { ComposedChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { MessageCircle, X, Send, FileDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { Card, Badge, Button } from "../components/ui";
+import { Card, Badge, Button, deliveryTone } from "../components/ui";
 import { api } from "../lib/api";
 import { downloadReceipt } from "../lib/receipt";
 
@@ -107,13 +107,27 @@ export default function PatientDashboard() {
           <h2 className="font-display text-lg font-semibold text-ink">Spending Over Time</h2>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,18,32,0.06)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#5b6b73" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#5b6b73" }} />
+              <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="spendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0f8b8d" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#0f8b8d" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,18,32,0.08)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#5b6b73" }} padding={{ left: 20, right: 20 }} />
+                <YAxis tick={{ fontSize: 11, fill: "#5b6b73" }} tickFormatter={(v) => `₹${v}`} width={55} />
                 <Tooltip formatter={(v) => [`₹${v.toFixed(2)}`, "Cost"]} />
-                <Line type="monotone" dataKey="cost" stroke="#0f8b8d" strokeWidth={2.5} dot={{ r: 3 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="cost" stroke="none" fill="url(#spendFill)" />
+                <Line
+                  type="monotone"
+                  dataKey="cost"
+                  stroke="#0f8b8d"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#0f8b8d", stroke: "#fff", strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </Card>
@@ -153,7 +167,7 @@ export default function PatientDashboard() {
                     <td className="py-3 pr-4 font-data">{r.total_cost > 0 ? `₹${r.total_cost.toFixed(2)}` : "—"}</td>
                     <td className="py-3 pr-4 font-data text-xs text-slate">{r.request_time}</td>
                     <td className="py-3 pr-4">
-                      <Badge tone={r.delivery_status === "Delivered" ? "delivered" : "pending"}>
+                      <Badge tone={deliveryTone(r.delivery_status)}>
                         {r.delivery_status || "Pending"}
                       </Badge>
                     </td>

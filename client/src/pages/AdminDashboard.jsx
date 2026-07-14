@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+ ComposedChart, Area, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import { Trash2, Plus, Phone, Check } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { Button, Card, Badge, Input, Select, Alert } from "../components/ui";
+import { Button, Card, Badge, Input, Select, Alert , deliveryTone} from "../components/ui";
+
 import { api } from "../lib/api";
 
 const PIE_COLORS = ["#f5b93d", "#0f8b8d", "#8b98a0"];
@@ -155,13 +156,27 @@ export default function AdminDashboard() {
             <h2 className="font-display text-sm font-semibold text-ink">Revenue Trend (Paid)</h2>
             <div className="mt-3 h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,18,32,0.06)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#5b6b73" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#5b6b73" }} />
+                <ComposedChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0f8b8d" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#0f8b8d" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,18,32,0.08)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#5b6b73" }} padding={{ left: 20, right: 20 }} />
+                  <YAxis tick={{ fontSize: 10, fill: "#5b6b73" }} tickFormatter={(v) => `₹${v}`} width={50} />
                   <Tooltip formatter={(v) => [`₹${v.toFixed(2)}`, "Revenue"]} />
-                  <Line type="monotone" dataKey="revenue" stroke="#0f8b8d" strokeWidth={2.5} dot={{ r: 3 }} />
-                </LineChart>
+                  <Area type="monotone" dataKey="revenue" stroke="none" fill="url(#revenueFill)" />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#0f8b8d"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#0f8b8d", stroke: "#fff", strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </Card>
@@ -230,7 +245,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="py-2.5 pr-3 font-data">{r.total_cost > 0 ? `₹${r.total_cost.toFixed(2)}` : "—"}</td>
                       <td className="py-2.5 pr-3">
-                        <Badge tone={r.delivery_status === "Delivered" ? "delivered" : "pending"}>
+                        <Badge tone={deliveryTone(r.delivery_status)}>
                           {r.delivery_status || "Pending"}
                         </Badge>
                       </td>

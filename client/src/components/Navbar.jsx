@@ -27,8 +27,8 @@ export default function Navbar() {
 
   const staffRole = session.role;
   const isPatient = !!session.patient_id;
-  const links = staffRole ? ROLE_LINKS[staffRole] || [] : [];
-
+ const links = staffRole ? ROLE_LINKS[staffRole] || [] : isPatient ? [{ to: "/robot", label: "Robot Delivery" }] : [];
+ 
   async function handleLogout() {
     if (isPatient) {
       await logoutPatient();

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Plus, X, Send } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { Button, Card, Badge, Input, Select, Alert } from "../components/ui";
+import { Button, Card, Badge, Input, Select, Alert, deliveryTone } from "../components/ui";
 import { api } from "../lib/api";
 
 function emptyRow() {
@@ -267,7 +267,7 @@ export default function NurseDashboard() {
                     <td className="py-3 pr-4 font-data text-xs text-slate">{r.request_time}</td>
                     <td className="py-3 pr-4 font-data">{r.total_cost > 0 ? `₹${r.total_cost.toFixed(2)}` : "—"}</td>
                     <td className="py-3 pr-4">
-                      <Badge tone={r.delivery_status === "Delivered" ? "delivered" : "pending"}>
+                      <Badge tone={deliveryTone(r.delivery_status)}>
                         {r.delivery_status || "Pending"}
                       </Badge>
                     </td>

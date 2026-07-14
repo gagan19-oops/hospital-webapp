@@ -40,6 +40,11 @@ export default function PharmacyDashboard() {
     load();
   }, [load]);
 
+  async function sendToRobot(reqId) {
+    await api.post("/api/pharmacy/send-to-robot", { req_id: reqId });
+    load();
+  }
+
   async function saveCost(itemId) {
     const cost = costDrafts[itemId];
     if (cost === undefined || cost === "") return;
@@ -250,6 +255,7 @@ export default function PharmacyDashboard() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink/10 text-xs font-semibold uppercase tracking-wide text-slate">
+                  <th className="py-2 pr-4">Order</th>
                   <th className="py-2 pr-4">Patient</th>
                   <th className="py-2 pr-4">Ward</th>
                   <th className="py-2 pr-4">Medicines</th>
@@ -264,6 +270,7 @@ export default function PharmacyDashboard() {
               <tbody>
                 {history.map((r) => (
                   <tr key={r.id} className="border-b border-ink/5">
+                    <td className="py-3 pr-4 font-data">#{r.id}</td>
                     <td className="py-3 pr-4 font-data">{r.patient_id}</td>
                     <td className="py-3 pr-4">{r.ward}</td>
                     <td className="py-3 pr-4">
@@ -285,21 +292,32 @@ export default function PharmacyDashboard() {
                     </td>
                     <td className="py-3 pr-4 font-data text-xs text-slate">{r.delivery_time || "—"}</td>
                     <td className="py-3">
-                      {r.qr_data && (
-                        <button
-                          className="text-xs font-semibold text-teal-deep hover:text-teal"
-                          onClick={() =>
-                            setQrModal({
+                      <div className="flex items-center gap-3">
+                        {r.qr_data && (
+                          <button
+                            className="text-xs font-semibold text-teal-deep hover:text-teal"
+                            onClick={() =>
+                              setQrModal({
                               qr_data: r.qr_data,
+                              req_id: r.id,
                               patient_id: r.patient_id,
                               ward: r.ward,
                               items: r.items.map((it) => ({ name: it.medicine_name, unit: it.unit, quantity: it.quantity })),
                             })
-                          }
-                        >
-                          View QR
-                        </button>
-                      )}
+                            }
+                          >
+                            View QR
+                          </button>
+                        )}
+                        {r.qr_status === "Generated" && (!r.delivery_status || r.delivery_status === "Pending") && (
+                          <button
+                            className="text-xs font-semibold text-coral hover:text-coral-deep"
+                            onClick={() => sendToRobot(r.id)}
+                          >
+                            Send to robot
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
