@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* ================= DESIGN TOKENS =================
+   Palette grounded in a clinical-monitor + delivery-tech mood:
+   deep ink navy, a calm clinical teal (not generic SaaS blue), a warm
+   coral pulse accent, and a soft mist background. Space Grotesk carries
+   the display voice (technical, precise, a little architectural),
+   Inter handles body copy, JetBrains Mono renders patient IDs, costs,
+   and timestamps so tabular data reads like real clinical data.
+*/
+@theme {
+  --color-ink: #0b1220;
+  --color-ink-soft: #17273a;
+  --color-teal: #0f8b8d;
+  --color-teal-deep: #0b6567;
+  --color-teal-bright: #14b8ba;
+  --color-mist: #eaf3f3;
+  --color-paper: #fbfbf9;
+  --color-coral: #ff6b57;
+  --color-coral-deep: #e34f3b;
+  --color-slate: #5b6b73;
+  --color-slate-light: #8b98a0;
+
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Visible keyboard focus everywhere - accessibility floor */
+:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+/* Signature element: an animated pulse/vitals trace, used sparingly
+   (hero background, section dividers, loading states) to tie the
+   clinical + delivery-tech themes together without leaning on a
+   generic gradient blob. */
+@keyframes pulse-travel {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.pulse-line-path {
+  stroke-dasharray: 1000;
+  animation: pulse-travel 3.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-line-path {
+    animation: none;
+  }
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Slow, continuous "conveyor belt" scroll for the process-step cards on the
+   homepage. The track is rendered twice back to back (see Home.jsx) and
+   scrolls exactly -50% so the loop is seamless. Pauses on hover so visitors
+   can actually read a card without it drifting away mid-sentence. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee 32s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* Utility: mono tabular figures for IDs / money / timestamps in tables */
+.font-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbar for chat/table panels - subtle, not default chunky bars */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-slate-light);
+  border-radius: 999px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
