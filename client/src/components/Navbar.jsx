@@ -40,7 +40,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ink/5 bg-paper/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-green-700/20 bg-green-100/40 backdrop-blur-xl shadow-lg">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 sm:px-8">
         <Link to="/" className="flex items-center gap-2.5">
           <img src="/logo.png" alt="" className="h-9 w-9 rounded-full object-cover" />
