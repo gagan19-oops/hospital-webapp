@@ -12,7 +12,7 @@ async function fetchRequestsWithItems(whereSql, params, orderSql) {
   const [headers] = await pool.query(
     `SELECT id, patient_id, ward, request_time, qr_status, qr_time,
             delivery_status, delivery_time, qr_data, payment_status, payment_time,
-            diagnosis, instructions
+            diagnosis, instructions, robot_status, robot_id, robot_updated_at
      FROM requests WHERE ${whereSql} ${orderSql || ""}`,
     params
   );
@@ -59,6 +59,9 @@ async function fetchRequestsWithItems(whereSql, params, orderSql) {
       payment_time: h[10],
       diagnosis: h[11],
       instructions: h[12],
+      robot_status: h[13],
+      robot_id: h[14],
+      robot_updated_at: h[15],
       items,
       total_cost,
       all_priced,
