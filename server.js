@@ -670,14 +670,25 @@ app.delete(
 
 // ================= HELPERS =================
 function formatNow() {
+  // Always formats in IST (India Standard Time), regardless of what
+  // timezone the actual server machine is running in. This matters because
+  // Render's servers run in UTC, not IST - without pinning the timezone here
+  // explicitly, timestamps would be off by 5:30 hours (and sometimes even
+  // show the wrong date) compared to running the same code locally in India.
   const now = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  let hours = now.getHours();
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12;
-  return `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()} ${pad(hours)}:${pad(
-    now.getMinutes()
-  )} ${ampm}`;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(now);
+
+  const get = (type) => parts.find((p) => p.type === type).value;
+  const ampm = get("dayPeriod").toUpperCase();
+  return `${get("day")}-${get("month")}-${get("year")} ${get("hour")}:${get("minute")} ${ampm}`;
 }
 
 function getLocalNetworkIp() {
