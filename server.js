@@ -75,19 +75,7 @@ function requirePatientSession(req, res, next) {
   next();
 }
 
-// Robots (the simulator for now, real hardware later) authenticate with a
-// shared secret key in a header, not a browser session/cookie - a physical
-// robot's onboard controller has no browser to hold a login session in.
-function requireRobotKey(req, res, next) {
-  const key = req.headers["x-robot-key"];
-  if (!process.env.ROBOT_API_KEY) {
-    return res.status(500).json({ error: "ROBOT_API_KEY is not set in .env on the server" });
-  }
-  if (!key || key !== process.env.ROBOT_API_KEY) {
-    return res.status(401).json({ error: "Invalid or missing robot API key" });
-  }
-  next();
-}
+
 
 // ================= SESSION =================
 // The React app calls this on load to figure out who (if anyone) is logged
