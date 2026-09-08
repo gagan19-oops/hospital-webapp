@@ -1,5 +1,8 @@
 require("dotenv").config();
 const express = require("express");
+const multer = require("multer");
+const sharp = require("sharp");
+const jsQR = require("jsqr");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const path = require("path");
@@ -12,7 +15,16 @@ const { answerPatientQuestion } = require("./rag");
 const { WARDS, MEDICINE_FORMS, MEDICINE_UNITS } = require("./constants");
 const { fetchRequestsWithItems, generatePatientId } = require("./helpers");
 
+
 const app = express();
+
+const qrUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024,
+  },
+});
+
 
 // ================= MIDDLEWARE =================
 app.use(express.urlencoded({ extended: true }));
@@ -745,7 +757,7 @@ app.get(
     if (rows.length === 0) {
       return res.json({ job: null });
     }
-    const [id, ward, patient_id] = rows[0];
+    const {id, ward, patient_id} = rows[0];
     await pool.query("UPDATE requests SET delivery_status='Assigned' WHERE id=?", [id]);
     res.json({ job: { req_id: id, ward, patient_id, expected_id: id } });
   })
@@ -766,6 +778,73 @@ app.post(
       req_id,
     ]);
     res.json({ ok: true });
+  })
+);
+
+app.post(
+  "/api/robot/verify-qr",
+  requireRobotKey,
+  qrUpload.single("image"),
+  asyncRoute(async (req, res) => {
+    const { req_id } = req.body;
+
+    if (!req_id || !req.file) {
+      return res.status(400).json({
+        error: "Request ID and QR image are required",
+      });
+    }
+
+    const [rows] = await pool.query(
+      "SELECT id, ward, patient_id FROM requests WHERE id = ? LIMIT 1",
+      [req_id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        error: "Request not found",
+      });
+    }
+
+    const { id, ward, patient_id } = rows[0];
+
+    const { data, info } = await sharp(req.file.buffer)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const qrCode = jsQR(
+      new Uint8ClampedArray(data),
+      info.width,
+      info.height
+    );
+
+    if (!qrCode) {
+      return res.json({
+        verified: false,
+        reason: "QR code not detected",
+      });
+    }
+
+    const qrText = qrCode.data;
+    const match = qrText.match(/Request ID:\s*(\d+)/i);
+    const scannedId = match ? Number(match[1]) : null;
+
+    if (scannedId !== Number(id)) {
+      return res.json({
+        verified: false,
+        reason: "Request ID mismatch",
+        expected_id: Number(id),
+        scanned_id: scannedId,
+      });
+    }
+
+    res.json({
+      verified: true,
+      req_id: Number(id),
+      ward,
+      patient_id,
+      scanned_id: scannedId,
+    });
   })
 );
 
