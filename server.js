@@ -826,8 +826,8 @@ app.post(
       });
     }
 
-    const qrText = qrCode.data;
-    const match = qrText.match(/Request ID:\s*(\d+)/i);
+    const qrText = qrCode.data.trim();
+    const match = qrText.match(/(?:Request ID:\s*)?(\d+)/i);
     const scannedId = match ? Number(match[1]) : null;
 
     if (scannedId !== Number(id)) {
