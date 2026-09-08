@@ -805,7 +805,7 @@ app.post(
       });
     }
 
-    const { id, ward, patient_id } = rows[0];
+    const [id, ward, patient_id ] = rows[0];
     console.log("QR Verification database row:" , rows[0]);
 
     const { data, info } = await sharp(req.file.buffer)
