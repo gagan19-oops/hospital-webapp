@@ -757,7 +757,7 @@ app.get(
     if (rows.length === 0) {
       return res.json({ job: null });
     }
-    const {id, ward, patient_id} = rows[0];
+    const [id, ward, patient_id] = rows[0];
     await pool.query("UPDATE requests SET delivery_status='Assigned' WHERE id=?", [id]);
     res.json({ job: { req_id: id, ward, patient_id, expected_id: id } });
   })
