@@ -751,13 +751,25 @@ app.get(
   "/api/robot/next-job",
   requireRobotKey,
   asyncRoute(async (req, res) => {
+
+    console.log("========== NEXT JOB CALLED ==========");
+    console.log("Time:", new Date().toISOString());
+    console.log("User-Agent:", req.headers["user-agent"]);
+
     const [rows] = await pool.query(
       "SELECT id, ward, patient_id FROM requests WHERE delivery_status='Requested' ORDER BY id ASC LIMIT 1"
     );
+
+    console.log("Found rows:", rows);
+
     if (rows.length === 0) {
       return res.json({ job: null });
     }
     const [id, ward, patient_id] = rows[0];
+
+    console.log("ASSIGNING JOB:", id, ward, patient_id);
+
+
     await pool.query("UPDATE requests SET delivery_status='Assigned' WHERE id=?", [id]);
     res.json({ job: { req_id: id, ward, patient_id, expected_id: id } });
   })
