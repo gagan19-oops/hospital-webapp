@@ -745,35 +745,49 @@ function requireRobotKey(req, res, next) {
   next();
 }
 
-const ROBOT_STATUSES = ["Picked Up", "In Transit", "Obstacle Detected", "Delivered", "Failed"];
+const ROBOT_STATUSES = [
+  "QR Scanning",
+  "QR Scanning Failed",
+  "QR Scanning Done",
+  "Assigned",
+  "Picked Up",
+  "In Transit",
+  "Obstacle Detected",
+  "Delivered",
+  "Failed",
+];
 
 app.get(
   "/api/robot/next-job",
   requireRobotKey,
   asyncRoute(async (req, res) => {
-
-    console.log("========== NEXT JOB CALLED ==========");
-    console.log("Time:", new Date().toISOString());
-    console.log("User-Agent:", req.headers["user-agent"]);
-
     const [rows] = await pool.query(
       "SELECT id, ward, patient_id FROM requests WHERE delivery_status='Requested' ORDER BY id ASC LIMIT 1"
     );
 
-    console.log("Found rows:", rows);
-
     if (rows.length === 0) {
       return res.json({ job: null });
     }
+
     const [id, ward, patient_id] = rows[0];
 
-    console.log("ASSIGNING JOB:", id, ward, patient_id);
+    // Job has been picked up by ESP32-CAM for QR verification
+    await pool.query(
+      "UPDATE requests SET delivery_status='QR Scanning' WHERE id=?",
+      [id]
+    );
 
-
-    await pool.query("UPDATE requests SET delivery_status='Assigned' WHERE id=?", [id]);
-    res.json({ job: { req_id: id, ward, patient_id, expected_id: id } });
+    res.json({
+      job: {
+        req_id: id,
+        ward,
+        patient_id,
+        expected_id: id,
+      },
+    });
   })
 );
+
 
 app.post(
   "/api/robot/status",
@@ -832,6 +846,11 @@ app.post(
     );
 
     if (!qrCode) {
+    await pool.query(
+      "UPDATE requests SET delivery_status='QR Scanning Failed' WHERE id=?",
+      [id]
+    );
+
       return res.json({
         verified: false,
         reason: "QR code not detected",
@@ -843,6 +862,11 @@ app.post(
     const scannedId = match ? Number(match[1]) : null;
 
     if (scannedId !== Number(id)) {
+      await pool.query(
+        "UPDATE requests SET delivery_status='QR Scanning Failed' WHERE id=?",
+        [id]
+      );
+
       return res.json({
         verified: false,
         reason: "Request ID mismatch",
@@ -850,6 +874,16 @@ app.post(
         scanned_id: scannedId,
       });
     }
+
+    await pool.query(
+      "UPDATE requests SET delivery_status='QR Scanning Done' WHERE id=?",
+      [id]
+    );
+
+    await pool.query(
+      "UPDATE requests SET delivery_status='Assigned' WHERE id=?",
+      [id]
+    );
 
     res.json({
       verified: true,
