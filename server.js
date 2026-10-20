@@ -749,13 +749,18 @@ const ROBOT_STATUSES = [
   "QR Scanning",
   "QR Scanning Failed",
   "QR Scanning Done",
+  "Requested",
   "Assigned",
+  "Picking Up Medicine",
   "Picked Up",
+  "Moving",
   "In Transit",
   "Obstacle Detected",
+  "Delivering",
   "Delivered",
-  "Failed",
+  "Failed"
 ];
+
 
 app.get(
   "/api/robot/next-job",
@@ -785,6 +790,65 @@ app.get(
         expected_id: id,
       },
     });
+  })
+);
+
+
+app.get(
+  "/api/robot/navigation-job",
+  requireRobotKey,
+  asyncRoute(async (req, res) => {
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      // Claim one QR-verified job that is waiting for the robot.
+      const [rows] = await connection.query(
+        `SELECT id, ward, patient_id
+         FROM requests
+         WHERE delivery_status = 'Assigned'
+         ORDER BY id ASC
+         LIMIT 1
+         FOR UPDATE`
+      );
+
+      if (rows.length === 0) {
+        await connection.commit();
+        return res.json({ job: null });
+      }
+
+      const [id, ward, patient_id] = rows[0];
+
+      const now = formatNow();
+
+      await connection.query(
+        `UPDATE requests
+         SET delivery_status = 'Picking Up Medicine',
+             delivery_time = ?
+         WHERE id = ? AND delivery_status = 'Assigned'`,
+        [now, id]
+      );
+
+      await connection.commit();
+
+      console.log(
+        `Robot claimed job ${id}; destination: ${ward}`
+      );
+
+      return res.json({
+        job: {
+          req_id: id,
+          ward: ward,
+          patient_id: patient_id
+        }
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   })
 );
 
