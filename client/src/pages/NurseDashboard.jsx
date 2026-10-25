@@ -38,7 +38,17 @@ export default function NurseDashboard() {
   }, [status, sort]);
 
   useEffect(() => {
-    load();
+    const refresh = () => {
+      load().catch((err) => {
+        console.error("Dashboard refresh failed:", err);
+      });
+    };
+
+    refresh();
+
+    const interval = setInterval(refresh, 3000);
+
+    return () => clearInterval(interval);
   }, [load]);
 
   function updateRow(i, field, value) {

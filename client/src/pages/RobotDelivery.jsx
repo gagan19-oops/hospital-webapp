@@ -18,10 +18,18 @@ export default function RobotDelivery() {
   }, []);
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 5000); // live refresh every 5s
-    return () => clearInterval(interval);
-  }, [load]);
+  const refresh = () => {
+    load().catch((err) => {
+      console.error("Robot delivery refresh failed:", err);
+    });
+  };
+
+  refresh();
+
+  const interval = setInterval(refresh, 3000);
+
+  return () => clearInterval(interval);
+}, [load]);
 
   const backTo = session.role ? `/${session.role}` : session.patient_id ? "/patient/dashboard" : "/";
 

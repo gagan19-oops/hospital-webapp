@@ -39,8 +39,18 @@ export default function PatientDashboard() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+  const refresh = () => {
+    load().catch((err) => {
+      console.error("Dashboard refresh failed:", err);
+    });
+  };
+
+  refresh();
+
+  const interval = setInterval(refresh, 3000);
+
+  return () => clearInterval(interval);
+}, [load]);
 
   useEffect(() => {
     if (chatBoxRef.current) chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
