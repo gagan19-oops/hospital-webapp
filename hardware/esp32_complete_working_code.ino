@@ -184,6 +184,9 @@ void gripperOpen() {
   Serial.println("Gripper opened.");
 }
 
+
+
+
 void gripperClose() {
   if (!gripperIsOpen) {
     Serial.println("Gripper already closed. Skipping.");
@@ -602,17 +605,20 @@ bool pickupMedicine() {
   Serial.println("Waiting 12 seconds before pickup...");
   delay(WAIT_AFTER_JOB_MS);
 
-  // Open gripper BEFORE lowering the arm.
-  Serial.println("Opening gripper...");
-  gripperOpen();
-  // Lower with gripper open.
+  if (gripperIsOpen) {
+    // Already open: do not open it again.
+    Serial.println("Gripper already open. Skipping opening.");
+  } else {
+    // Closed: open before the arm reaches the bottom.
+    Serial.println("Gripper is closed. Opening before descent...");
+    gripperOpen();
+  }
+
+  // Lower the arm while the gripper is open.
   if (!lowerArmToLimit()) return false;
 
-  // Grip the medicine.
-  Serial.println("Closing gripper around medicine...");
+  // Close the gripper to grip the medicine.
   gripperClose();
-  delay(GRIPPER_CLOSE_MS);
-  stopGripper();
 
   // Lift the medicine.
   if (!raiseArmToLimit()) return false;
