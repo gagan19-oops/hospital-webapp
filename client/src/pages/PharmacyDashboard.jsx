@@ -36,8 +36,17 @@ export default function PharmacyDashboard() {
     setLoading(false);
   }, [qrFilter, deliveryFilter, sort]);
 
+  
   useEffect(() => {
     load();
+
+    const interval = setInterval(() => {
+      load().catch((err) => {
+        console.error("Failed to refresh pharmacy dashboard:", err);
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, [load]);
 
   async function sendToRobot(reqId) {
