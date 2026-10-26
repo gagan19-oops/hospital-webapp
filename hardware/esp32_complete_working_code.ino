@@ -64,9 +64,9 @@ const uint32_t WAIT_AFTER_JOB_MS = 12000;
 const uint32_t GRIPPER_OPEN_MS = 2000;
 const uint32_t GRIPPER_CLOSE_MS = 2000;
 
-const uint32_t FORWARD_1M_MS = 3700;
-const uint32_t TURN_RIGHT_90_MS = 2900;
-const uint32_t TURN_LEFT_90_MS = 2900;
+const uint32_t FORWARD_HALF_M_MS = 1850;
+const uint32_t TURN_RIGHT_90_MS = 3200;
+const uint32_t TURN_LEFT_90_MS = 2600;
 
 // Safety timeouts for arm travel.
 // Adjust only after testing actual arm travel time.
@@ -557,7 +557,7 @@ bool followRoute() {
   postStatus("Moving");
 
   // 1. Forward 1 metre
-  if (!moveSegment(MOTION_FORWARD, FORWARD_1M_MS))
+  if (!moveSegment(MOTION_FORWARD, FORWARD_HALF_M_MS))
     return false;
 
   // 2. Turn right
@@ -565,7 +565,7 @@ bool followRoute() {
     return false;
 
   // 3. Forward 1 metre
-  if (!moveSegment(MOTION_FORWARD, FORWARD_1M_MS))
+  if (!moveSegment(MOTION_FORWARD, FORWARD_HALF_M_MS))
     return false;
 
   // 4. Turn left
@@ -573,7 +573,7 @@ bool followRoute() {
     return false;
 
   // 5. Forward 1 metre
-  if (!moveSegment(MOTION_FORWARD, FORWARD_1M_MS))
+  if (!moveSegment(MOTION_FORWARD, FORWARD_HALF_M_MS))
     return false;
 
   // 6. Turn left
@@ -581,7 +581,7 @@ bool followRoute() {
     return false;
 
   // 7. Forward 1 metre
-  if (!moveSegment(MOTION_FORWARD, FORWARD_1M_MS))
+  if (!moveSegment(MOTION_FORWARD, FORWARD_HALF_M_MS))
     return false;
 
   // 8. Turn right
@@ -589,7 +589,7 @@ bool followRoute() {
     return false;
 
   // 9. Forward 1 metre to destination
-  if (!moveSegment(MOTION_FORWARD, FORWARD_1M_MS))
+  if (!moveSegment(MOTION_FORWARD, FORWARD_HALF_M_MS))
     return false;
 
   stopMotors();

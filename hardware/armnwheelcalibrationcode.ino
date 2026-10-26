@@ -214,3 +214,206 @@ void loop() {
   }
 }
 
+// wheels with predefined path
+
+
+#include <Arduino.h>
+
+// Wheel motor driver pins — your existing mapping
+const int ENA = 33;
+const int ENB = 32;
+const int IN1 = 25;
+const int IN2 = 26;
+const int IN3 = 27;
+const int IN4 = 14;
+
+// Timings are entered in seconds
+float forwardSeconds = 1.85;
+float rightSeconds = 2.90;
+float leftSeconds = 2.90;
+
+bool running = false;
+
+// ---------------- MOTOR CONTROL ----------------
+
+void stopMotors() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+void forward() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void turnRight() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void turnLeft() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+// ---------------- MOVEMENT ----------------
+
+bool runMovement(void (*movement)(), float seconds) {
+  movement();
+
+  uint32_t durationMs = (uint32_t)(seconds * 1000.0f);
+  uint32_t startTime = millis();
+
+  while (millis() - startTime < durationMs) {
+    if (Serial.available()) {
+      String command = Serial.readStringUntil('\n');
+      command.trim();
+      command.toUpperCase();
+
+      if (command == "S") {
+        stopMotors();
+        running = false;
+        Serial.println("EMERGENCY STOP");
+        return false;
+      }
+    }
+
+    delay(2);
+  }
+
+  stopMotors();
+  delay(400);
+  return true;
+}
+
+// ---------------- YOUR PREDEFINED PATH ----------------
+
+void testPredefinedPath() {
+  if (running) return;
+
+  running = true;
+
+  Serial.println("\nStarting predefined path calibration...");
+  Serial.printf("Forward: %.2f seconds\n", forwardSeconds);
+  Serial.printf("Right: %.2f seconds\n", rightSeconds);
+  Serial.printf("Left: %.2f seconds\n", leftSeconds);
+
+  // 1. Forward 0.5 metre
+  if (!runMovement(forward, forwardSeconds)) return;
+
+  // 2. Turn right
+  if (!runMovement(turnRight, rightSeconds)) return;
+
+  // 3. Forward 0.5 metre
+  if (!runMovement(forward, forwardSeconds)) return;
+
+  // 4. Turn left
+  if (!runMovement(turnLeft, leftSeconds)) return;
+
+  // 5. Forward 0.5 metre
+  if (!runMovement(forward, forwardSeconds)) return;
+
+  // 6. Turn left
+  if (!runMovement(turnLeft, leftSeconds)) return;
+
+  // 7. Forward 0.5 metre
+  if (!runMovement(forward, forwardSeconds)) return;
+
+  // 8. Turn right
+  if (!runMovement(turnRight, rightSeconds)) return;
+
+  // 9. Forward 0.5 metre to destination
+  if (!runMovement(forward, forwardSeconds)) return;
+
+  stopMotors();
+  running = false;
+
+  Serial.println("\nPredefined path completed.");
+  Serial.println("Change timings and enter T to test again.");
+}
+
+// ---------------- SERIAL INPUT ----------------
+
+void processCommand(String command) {
+  command.trim();
+  command.toUpperCase();
+
+  if (command == "S") {
+    stopMotors();
+    running = false;
+    Serial.println("Motors stopped.");
+    return;
+  }
+
+  if (command == "T") {
+    testPredefinedPath();
+    return;
+  }
+
+  float f, r, l;
+
+  if (sscanf(command.c_str(), "F%f,R%f,L%f",
+             &f, &r, &l) == 3) {
+
+    if (f < 0.1f || f > 10.0f ||
+        r < 0.1f || r > 10.0f ||
+        l < 0.1f || l > 10.0f) {
+      Serial.println("Each timing must be between 0.1 and 10 seconds.");
+      return;
+    }
+
+    forwardSeconds = f;
+    rightSeconds = r;
+    leftSeconds = l;
+
+    Serial.println("\nTimings updated:");
+    Serial.printf("Forward = %.2f seconds\n", forwardSeconds);
+    Serial.printf("Right   = %.2f seconds\n", rightSeconds);
+    Serial.printf("Left    = %.2f seconds\n", leftSeconds);
+    Serial.println("Enter T to run the complete predefined path.");
+    return;
+  }
+
+  Serial.println("Commands:");
+  Serial.println("F1.85,R2.9,L2.9  - Set timings in seconds");
+  Serial.println("T                - Run complete predefined path");
+  Serial.println("S                - Stop motors");
+}
+
+// ---------------- SETUP ----------------
+
+void setup() {
+  Serial.begin(115200);
+  Serial.setTimeout(100);
+
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  digitalWrite(ENA, HIGH);
+  digitalWrite(ENB, HIGH);
+
+  stopMotors();
+
+  Serial.println("\nPredefined Path Calibration");
+  Serial.println("Enter F1.85,R2.9,L2.9");
+  Serial.println("Then enter T to run the entire route.");
+}
+
+void loop() {
+  if (Serial.available()) {
+    String command = Serial.readStringUntil('\n');
+    processCommand(command);
+  }
+}
