@@ -44,6 +44,20 @@ const uint32_t BATTERY_CHECK_INTERVAL_MS = 5000;
 float batteryVoltage = 0.0;
 uint32_t lastBatteryCheck = 0;
 
+const float BATTERY_LOW_WARNING_V = 10.5;
+const float BATTERY_CRITICAL_V = 9.6;
+
+const uint32_t BATTERY_UPLOAD_INTERVAL_MS = 15000;
+
+uint32_t lastBatteryUpload = 0;
+
+float latestBatteryVoltage = 0.0;
+int batteryPercentage = 0;
+bool batteryLow = false;
+
+
+
+
 
 
 
@@ -715,7 +729,7 @@ float readBatteryVoltage() {
   float adcVoltage = (totalMilliVolts / 10.0) / 1000.0;
 
   return adcVoltage *
-         BATTERY_DIVIDER_RATIO *
+         DIVIDER_RATIO *
          BATTERY_CALIBRATION;
 }
 

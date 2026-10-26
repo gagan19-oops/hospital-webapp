@@ -916,13 +916,23 @@ app.post(
 );
 
 // Dashboard reads the latest battery readings here
+
 app.get(
   "/api/robot/battery",
-  requireRole("admin"),
   (req, res) => {
+    const isStaff = Boolean(req.session.role);
+    const isPatient = Boolean(req.session.patient_id);
+
+    if (!isStaff && !isPatient) {
+      return res.status(401).json({
+        error: "Please log in to view battery status"
+      });
+    }
+
     res.json(latestBatteryData);
   }
 );
+
 
 app.post(
   "/api/robot/verify-qr",
