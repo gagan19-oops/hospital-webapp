@@ -733,15 +733,10 @@ float readBatteryVoltage() {
          BATTERY_CALIBRATION;
 }
 
+
 int calculateBatteryPercentage(float voltage) {
-  // Rough voltage-based estimate for a 3S lithium-ion pack.
-  // This is not a precise state-of-charge measurement.
-  float percentage = ((voltage - 9.6) / (12.6 - 9.6)) * 100.0;
-
-  if (percentage < 0) percentage = 0;
-  if (percentage > 100) percentage = 100;
-
-  return (int)(percentage + 0.5);
+  float percentage = (voltage / 12.6) * 100.0;
+  return constrain((int)(percentage + 0.5), 0, 100);
 }
 
 void updateBatteryMonitoring() {
@@ -793,11 +788,7 @@ void uploadBatteryData() {
   latestBatteryVoltage = readBatteryVoltage();
 
   // Rough estimate only; not a safety measurement.
-  int percentage = (int)(
-    ((latestBatteryVoltage - 9.6) / (12.6 - 9.6)) * 100.0
-  );
-
-  percentage = constrain(percentage, 0, 100);
+  int percentage = calculateBatteryPercentage(latestBatteryVoltage);
 
   WiFiClientSecure client;
   client.setInsecure(); // Testing only; use certificate validation for production
