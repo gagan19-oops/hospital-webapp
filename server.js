@@ -871,6 +871,59 @@ app.post(
   })
 );
 
+// ================= ROBOT BATTERY MONITORING =================
+
+let latestBatteryData = {
+  voltage: null,
+  percentage: null,
+  updatedAt: null
+};
+
+// ESP32 sends battery readings here
+app.post(
+  "/api/robot/battery",
+  requireRobotKey,
+  asyncRoute(async (req, res) => {
+    const voltage = Number(req.body.voltage);
+    const percentage = Number(req.body.percentage);
+
+    if (
+      !Number.isFinite(voltage) ||
+      !Number.isFinite(percentage) ||
+      voltage < 0 ||
+      voltage > 15 ||
+      percentage < 0 ||
+      percentage > 100
+    ) {
+      return res.status(400).json({
+        error: "Invalid battery readings"
+      });
+    }
+
+    latestBatteryData = {
+      voltage: Math.round(voltage * 100) / 100,
+      percentage: Math.round(percentage),
+      updatedAt: formatNow()
+    };
+
+    console.log("Robot battery update:", latestBatteryData);
+
+    res.json({
+      ok: true,
+      battery: latestBatteryData
+    });
+  })
+);
+
+// Dashboard reads the latest battery readings here
+app.get(
+  "/api/robot/battery",
+  requireRole("admin"),
+  (req, res) => {
+    res.json(latestBatteryData);
+  }
+);
+
 app.post(
   "/api/robot/verify-qr",
   requireRobotKey,
