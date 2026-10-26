@@ -944,6 +944,9 @@ app.post(
       [id]
     );
 
+    // Keep this status visible for 2 seconds
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     await pool.query(
       "UPDATE requests SET delivery_status='Assigned' WHERE id=?",
       [id]
