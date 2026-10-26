@@ -5,6 +5,7 @@
 
 bool gripperIsOpen = false;
 
+
 // =====================================================
 // 1. CONFIGURATION — CHANGE THESE VALUES
 // =====================================================
@@ -20,6 +21,31 @@ const char* JOB_URL =
   "https://hospital.gagangowda.tech/api/robot/navigation-job";
 const char* STATUS_URL =
   "https://hospital.gagangowda.tech/api/robot/status";
+
+
+const char* BATTERY_URL =
+  "https://hospital.gagangowda.tech/api/robot/battery";
+
+
+// =====================================================
+// BATTERY MONITORING
+// =====================================================
+
+const int BATTERY_ADC_PIN = 34;
+
+// Voltage divider: 10kΩ top, 2kΩ bottom
+const float DIVIDER_RATIO = 6.0;
+
+// Adjust after comparing with a multimeter
+const float BATTERY_CALIBRATION = 1.0;
+
+const uint32_t BATTERY_CHECK_INTERVAL_MS = 5000;
+
+float batteryVoltage = 0.0;
+uint32_t lastBatteryCheck = 0;
+
+
+
 
 // =====================================================
 // 2. MOTOR DRIVER 1 — WHEELS
@@ -672,6 +698,126 @@ void failCurrentJob(const String& reason) {
   currentRequestId = -1;
 }
 
+
+
+// =====================================================
+// BATTERY VOLTAGE READING
+// =====================================================
+
+float readBatteryVoltage() {
+  uint32_t totalMilliVolts = 0;
+
+  for (int i = 0; i < 10; i++) {
+    totalMilliVolts += analogReadMilliVolts(BATTERY_ADC_PIN);
+    delay(5);
+  }
+
+  float adcVoltage = (totalMilliVolts / 10.0) / 1000.0;
+
+  return adcVoltage *
+         BATTERY_DIVIDER_RATIO *
+         BATTERY_CALIBRATION;
+}
+
+int calculateBatteryPercentage(float voltage) {
+  // Rough voltage-based estimate for a 3S lithium-ion pack.
+  // This is not a precise state-of-charge measurement.
+  float percentage = ((voltage - 9.6) / (12.6 - 9.6)) * 100.0;
+
+  if (percentage < 0) percentage = 0;
+  if (percentage > 100) percentage = 100;
+
+  return (int)(percentage + 0.5);
+}
+
+void updateBatteryMonitoring() {
+  if (millis() - lastBatteryCheck <
+      BATTERY_CHECK_INTERVAL_MS) {
+    return;
+  }
+
+  lastBatteryCheck = millis();
+
+  batteryVoltage = readBatteryVoltage();
+  batteryPercentage =
+      calculateBatteryPercentage(batteryVoltage);
+
+  batteryLow = batteryVoltage <= BATTERY_LOW_WARNING_V;
+
+  Serial.print("Battery: ");
+  Serial.print(batteryVoltage, 2);
+  Serial.print(" V | Estimated charge: ");
+  Serial.print(batteryPercentage);
+  Serial.print("% | ");
+
+  if (batteryVoltage <= BATTERY_CRITICAL_V) {
+    Serial.println("CRITICAL BATTERY WARNING");
+  } else if (batteryLow) {
+    Serial.println("LOW BATTERY WARNING");
+  } else {
+    Serial.println("Battery voltage OK");
+  }
+}
+
+// =====================================================
+// UPLOAD BATTERY DATA TO WEBSITE
+// =====================================================
+
+void uploadBatteryData() {
+  if (millis() - lastBatteryUpload <
+      BATTERY_UPLOAD_INTERVAL_MS) {
+    return;
+  }
+
+  lastBatteryUpload = millis();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Battery upload skipped: WiFi disconnected");
+    return;
+  }
+
+  latestBatteryVoltage = readBatteryVoltage();
+
+  // Rough estimate only; not a safety measurement.
+  int percentage = (int)(
+    ((latestBatteryVoltage - 9.6) / (12.6 - 9.6)) * 100.0
+  );
+
+  percentage = constrain(percentage, 0, 100);
+
+  WiFiClientSecure client;
+  client.setInsecure(); // Testing only; use certificate validation for production
+
+  HTTPClient http;
+
+  if (!http.begin(client, BATTERY_URL)) {
+    Serial.println("Battery API connection failed");
+    return;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Robot-Key", ROBOT_KEY);
+
+  String payload = "{\"voltage\":";
+  payload += String(latestBatteryVoltage, 2);
+  payload += ",\"percentage\":";
+  payload += String(percentage);
+  payload += "}";
+
+  int httpCode = http.POST(payload);
+
+  Serial.print("Battery upload HTTP code: ");
+  Serial.println(httpCode);
+
+  if (httpCode > 0) {
+    Serial.println(http.getString());
+  } else {
+    Serial.println(http.errorToString(httpCode));
+  }
+
+  http.end();
+}
+
 // =====================================================
 // 18. SETUP
 // =====================================================
@@ -699,6 +845,8 @@ void setup() {
   pinMode(LEFT_ECHO, INPUT);
   pinMode(RIGHT_TRIG, OUTPUT);
   pinMode(RIGHT_ECHO, INPUT);
+
+  analogReadResolution(12);
 
   digitalWrite(LEFT_TRIG, LOW);
   digitalWrite(RIGHT_TRIG, LOW);
@@ -741,6 +889,11 @@ void setup() {
 // =====================================================
 
 void loop() {
+
+  updateBatteryMonitoring();
+
+  uploadBatteryData();
+
   if (WiFi.status() != WL_CONNECTED) {
     stopEverything();
     Serial.println("Wi-Fi unavailable. Reconnecting...");
